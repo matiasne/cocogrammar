@@ -3,8 +3,22 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { GRAMMAR_MODEL } from "@/lib/constants";
 import { AnalysisSchema, type Analysis } from "@/lib/schemas";
 
-// Reads OPENAI_API_KEY from the environment.
-export const openai = new OpenAI();
+// True when an OpenAI key is configured. The grammar facade uses this to decide
+// whether to route corrections through OpenAI or fall back to Anthropic.
+export function hasOpenAI(): boolean {
+  return !!process.env.OPENAI_API_KEY;
+}
+
+// Lazily construct the client so merely importing this module doesn't throw when
+// OPENAI_API_KEY is absent (e.g. Anthropic-only deployments, `next build`).
+let _openai: OpenAI | null = null;
+function client(): OpenAI {
+  if (!_openai) {
+    if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not set");
+    _openai = new OpenAI();
+  }
+  return _openai;
+}
 
 // Fast, focused call: just the corrected text. Kept small (plain text, low
 // max_tokens, no structured schema) so it returns as quickly as possible.
@@ -15,7 +29,7 @@ translate, paraphrase heavily, or add new ideas. Do not explain — output only 
 corrected text, nothing else.`;
 
 export async function correctText(originalText: string): Promise<string> {
-  const res = await openai.chat.completions.create({
+  const res = await client().chat.completions.create({
     model: GRAMMAR_MODEL,
     max_completion_tokens: 1024,
     messages: [
@@ -39,7 +53,7 @@ wording. Be generous but honest about strengths. If the text is already correct,
 empty mistake/typo lists.`;
 
 export async function distill(originalText: string): Promise<Analysis> {
-  const res = await openai.chat.completions.parse({
+  const res = await client().chat.completions.parse({
     model: GRAMMAR_MODEL,
     max_completion_tokens: 4096,
     messages: [

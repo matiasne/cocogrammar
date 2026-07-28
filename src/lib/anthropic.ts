@@ -2,8 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, FAST_MODEL } from "@/lib/constants";
 import {
+  AnalysisSchema,
   CourseSchema,
   GradeSchema,
+  type Analysis,
   type Course,
   type Grade,
 } from "@/lib/schemas";
@@ -11,9 +13,59 @@ import {
 // Reads ANTHROPIC_API_KEY from the environment.
 export const anthropic = new Anthropic();
 
-// NOTE: per-sentence grammar correction + analysis (`correctText`, `distill`)
-// now run on OpenAI GPT-4o-mini — see `@/lib/openai`. This file keeps the
-// Anthropic-only paths: chapter grading and course generation.
+// Per-sentence grammar correction + analysis run on OpenAI GPT-4o-mini when an
+// OpenAI key is configured (see `@/lib/openai`), otherwise they fall back to the
+// Anthropic implementations below (`correctText`, `distill`). The grammar facade
+// in `@/lib/grammar` picks the provider. This file also owns the always-Anthropic
+// paths: chapter grading and course generation.
+
+// Fast, focused call: just the corrected text, in the same language.
+const CORRECT_SYSTEM_PROMPT = `You are an expert writing teacher. Given a learner's
+text, return ONLY a corrected version in the SAME language: fix all grammar and
+spelling errors while preserving the learner's meaning, tone, and voice. Do not
+translate, paraphrase heavily, or add new ideas. Do not explain — output only the
+corrected text, nothing else.`;
+
+export async function correctText(originalText: string): Promise<string> {
+  const res = await anthropic.messages.create({
+    model: FAST_MODEL,
+    max_tokens: 1024,
+    system: CORRECT_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: originalText }],
+  });
+
+  const text = res.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+  if (!text) throw new Error("Model returned no corrected text");
+  return text;
+}
+
+// Heavier call: the full coaching analysis. Runs after the correction is shown.
+const ANALYSIS_SYSTEM_PROMPT = `You are an expert, encouraging writing teacher.
+Analyze the learner's text as writing coaching: estimate the CEFR level, note grammar
+mistakes (with the exact offending excerpt, a correction, and a short learner-friendly
+explanation), list spelling typos, summarize the grammar in a couple of sentences, and
+call out concrete strengths. Be precise about excerpts — quote the learner's own
+wording. Be generous but honest about strengths. If the text is already correct, return
+empty mistake/typo lists.`;
+
+export async function distill(originalText: string): Promise<Analysis> {
+  const res = await anthropic.messages.parse({
+    model: FAST_MODEL,
+    max_tokens: 4096,
+    system: ANALYSIS_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: originalText }],
+    output_config: { format: zodOutputFormat(AnalysisSchema) },
+  });
+
+  if (!res.parsed_output) {
+    throw new Error("Model did not return structured output for the analysis");
+  }
+  return res.parsed_output;
+}
 
 // Grades a learner's answer to a chapter challenge against the model answer.
 const GRADE_SYSTEM_PROMPT = `You are grading a language learner's answer to a grammar

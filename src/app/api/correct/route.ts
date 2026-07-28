@@ -1,9 +1,13 @@
-import OpenAI from "openai";
 import { sql, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { submissions, distillations, users } from "@/db/schema";
-import { correctText, distill } from "@/lib/openai";
+import {
+  correctText,
+  distill,
+  isRateLimitError,
+  isBadRequestError,
+} from "@/lib/grammar";
 import { embed, distillationSignature } from "@/lib/embeddings";
 import { requireUser, unauthorized, UnauthorizedError } from "@/lib/auth";
 
@@ -96,8 +100,8 @@ export async function POST(req: Request) {
         send({ type: "analysis", analysis, submissionId: submission.id });
       } catch (err) {
         let message = "Something went wrong";
-        if (err instanceof OpenAI.RateLimitError) message = "Rate limited, try again shortly";
-        else if (err instanceof OpenAI.BadRequestError) message = err.message;
+        if (isRateLimitError(err)) message = "Rate limited, try again shortly";
+        else if (isBadRequestError(err)) message = err.message;
         else console.error("correct route error:", err);
         send({ type: "error", error: message });
       } finally {
