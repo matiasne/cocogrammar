@@ -96,6 +96,26 @@ a:hover {
   animation: reveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Page transition — replayed on each route change between Write/Course/Log */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.page-enter {
+  animation: pageEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
+
 /* Overlay backdrop fade + loader rising up from the bottom of the screen */
 @keyframes overlayFade {
   from {

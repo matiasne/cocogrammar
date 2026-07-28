@@ -18,12 +18,12 @@
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.9",
     "drizzle-orm": "^0.44.5",
+    "mercadopago": "^3.2.1",
     "next": "^15.5.4",
     "openai": "^7.0.0",
     "postgres": "^3.4.7",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "stripe": "^22.3.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

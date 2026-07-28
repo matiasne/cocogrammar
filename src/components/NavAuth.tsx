@@ -45,7 +45,7 @@ export function NavAuth({
   return (
     <div className="flex items-center gap-4">
       {isSubscribed ? (
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-lime">
+        <span className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-lime sm:inline">
           Unlimited
         </span>
       ) : (
@@ -53,20 +53,22 @@ export function NavAuth({
           {sentencesUsed}/10 sentences · {coursesUsed}/4 courses
         </span>
       )}
-      {!isSubscribed && (
-        <Link
-          href="/subscribe"
-          className="rounded-3xl bg-lime px-5 py-2 text-[13px] font-normal text-ink hover:bg-lime-bright hover:text-ink"
-        >
-          Upgrade
-        </Link>
-      )}
+      <Link
+        href="/subscribe"
+        className={
+          isSubscribed
+            ? "text-[13px] font-light text-cream/70 hover:text-cream"
+            : "rounded-3xl bg-lime px-5 py-2 text-[13px] font-normal text-ink hover:bg-lime-bright hover:text-ink"
+        }
+      >
+        {isSubscribed ? "Subscription" : "Subscribe"}
+      </Link>
       <button
         onClick={signOut}
         className="text-[13px] font-light text-cream/60 hover:text-cream"
         title={email}
       >
-        Sign out
+        Logout
       </button>
     </div>
   );

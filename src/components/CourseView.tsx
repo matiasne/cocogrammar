@@ -240,31 +240,18 @@ export function CourseView() {
           <p className="mt-2 font-script text-3xl text-lime md:text-4xl">
             richest slips first
           </p>
-          <p className="mt-4 max-w-xl text-lg font-light text-cream/70">
-            A course pressed from your own habits. Finish a chapter and the
-            writing behind it is cleared — you never study a rule you
-            don&rsquo;t actually break.
-          </p>
         </header>
       )}
 
-      {!course && (
+      {!course && hasSubmissions && (
         <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={generate}
-            disabled={loading || !hasSubmissions}
+            disabled={loading}
             className="rounded-3xl border border-cream/28 px-7 py-3 text-[13px] font-light uppercase tracking-[0.12em] text-cream hover:border-lime/50 hover:text-lime disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-cream/28 disabled:hover:text-cream"
           >
             Build my course
           </button>
-          {!hasSubmissions && (
-            <Link
-              href="/"
-              className="rounded-3xl bg-lime px-7 py-3 text-[13px] font-normal uppercase tracking-[0.12em] text-ink hover:bg-lime-bright"
-            >
-              Go to Write →
-            </Link>
-          )}
         </div>
       )}
 
@@ -528,24 +515,29 @@ export function CourseView() {
           );
         })()}
 
-      {!course && !loading && (
+      {!course && !loading && hasSubmissions && (
         <p className="max-w-lg text-base font-light leading-relaxed text-cream/50">
-          {hasSubmissions ? (
-            <>
-              You&rsquo;ve logged some sentences. Hit{" "}
-              <span className="text-cream">Build my course</span> to press them
-              into a course pressed from your habits. Each chapter is one
-              recurring slip — finish it to clear that writing and shrink the
-              box.
-            </>
-          ) : (
-            <>
-              No course yet. Write a few sentences on the Write page, then build
-              a course pressed from your habits. Each chapter is one recurring
-              slip — finish it to clear that writing and shrink the box.
-            </>
-          )}
+          You&rsquo;ve logged some sentences. Hit{" "}
+          <span className="text-cream">Build my course</span> to press them into
+          a course pressed from your habits. Each chapter is one recurring slip
+          — finish it to clear that writing and shrink the box.
         </p>
+      )}
+
+      {!course && !loading && !hasSubmissions && (
+        <div className="flex flex-col items-center gap-6 py-16 text-center">
+          <p className="max-w-lg text-base font-light leading-relaxed text-cream/50">
+            No course yet. Write a few sentences on the Write page, then build a
+            course pressed from your habits. Each chapter is one recurring slip
+            — finish it to clear that writing and shrink the box.
+          </p>
+          <Link
+            href="/"
+            className="rounded-3xl bg-lime px-7 py-3 text-[13px] font-normal uppercase tracking-[0.12em] text-ink hover:bg-lime-bright"
+          >
+            Go to Write →
+          </Link>
+        </div>
       )}
     </div>
   );

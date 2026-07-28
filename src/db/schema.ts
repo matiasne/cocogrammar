@@ -18,9 +18,9 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
-  // Freemium billing state.
+  // Freemium billing state (MercadoPago preapproval / recurring subscription).
   isSubscribed: boolean("is_subscribed").notNull().default(false),
-  stripeCustomerId: text("stripe_customer_id"),
+  mpPreapprovalId: text("mp_preapproval_id"),
   // Durable usage counters (free caps: 10 sentences, 4 courses). Durable rather
   // than derived from rows, which get deleted as chapters are finished.
   sentencesUsed: integer("sentences_used").notNull().default(0),

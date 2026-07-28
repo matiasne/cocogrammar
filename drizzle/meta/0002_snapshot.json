@@ -1,5 +1,5 @@
 {
-  "id": "8a47e14f-3a90-42a8-8323-ed732fcb4fce",
+  "id": "b3444563-1056-4812-b1e2-fd1dfe683dc7",
   "prevId": "b41f97bf-8129-4da0-bce3-d49bb079c809",
   "version": "7",
   "dialect": "postgresql",
@@ -373,8 +373,8 @@
           "notNull": true,
           "default": false
         },
-        "stripe_customer_id": {
-          "name": "stripe_customer_id",
+        "mp_preapproval_id": {
+          "name": "mp_preapproval_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false

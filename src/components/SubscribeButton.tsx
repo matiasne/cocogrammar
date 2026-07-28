@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-// POSTs to the checkout route and redirects to Stripe's hosted Checkout.
+// POSTs to the checkout route and redirects to MercadoPago's hosted checkout.
 export function SubscribeButton({ className = "" }: { className?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

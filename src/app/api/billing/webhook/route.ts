@@ -1,65 +1,53 @@
 import { NextResponse } from "next/server";
-import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
-import { getStripe } from "@/lib/stripe";
+import { preApproval } from "@/lib/mercadopago";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 
 export const runtime = "nodejs";
 
-// Public route (see middleware PUBLIC_PREFIXES). Stripe signs each event; we
-// verify against the RAW body, so this must NOT parse JSON via req.json().
+// Public route (see middleware PUBLIC_PREFIXES). MercadoPago sends a thin
+// notification — we fetch the referenced preapproval and sync isSubscribed.
+//
+// A preapproval is "authorized" while the subscription is live; "paused" or
+// "cancelled" once it stops. We key the user off external_reference (the user
+// id we set at creation) and persist the preapproval id for later lookups.
 export async function POST(req: Request) {
-  const body = await req.text();
-  const sig = req.headers.get("stripe-signature");
-  if (!sig) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+  // The id can arrive in the JSON body (`data.id`) or as query params.
+  const url = new URL(req.url);
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+
+  const type =
+    (body as { type?: string; topic?: string }).type ??
+    (body as { topic?: string }).topic ??
+    url.searchParams.get("type") ??
+    url.searchParams.get("topic");
+
+  const preapprovalId =
+    (body as { data?: { id?: string } }).data?.id ??
+    url.searchParams.get("data.id") ??
+    url.searchParams.get("id");
+
+  // We only act on subscription (preapproval) notifications.
+  if (type !== "subscription_preapproval" || !preapprovalId) {
+    return NextResponse.json({ received: true });
   }
 
-  let event: Stripe.Event;
   try {
-    event = getStripe().webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!,
-    );
-  } catch (err) {
-    console.error("webhook signature verification failed:", err);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-  }
-
-  try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.client_reference_id;
-        const customerId =
-          typeof session.customer === "string" ? session.customer : session.customer?.id;
-        if (userId) {
-          await db
-            .update(users)
-            .set({ isSubscribed: true, stripeCustomerId: customerId ?? null })
-            .where(eq(users.id, userId));
-        }
-        break;
-      }
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const customerId =
-          typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-        const active = sub.status === "active" || sub.status === "trialing";
-        await db
-          .update(users)
-          .set({ isSubscribed: active })
-          .where(eq(users.stripeCustomerId, customerId));
-        break;
-      }
-      default:
-        break;
+    const pre = await preApproval().get({ id: preapprovalId });
+    const userId = pre.external_reference;
+    if (!userId) {
+      return NextResponse.json({ received: true });
     }
+
+    const active = pre.status === "authorized";
+    await db
+      .update(users)
+      .set({ isSubscribed: active, mpPreapprovalId: preapprovalId })
+      .where(eq(users.id, userId));
   } catch (err) {
     console.error("webhook handler error:", err);
+    // Return 500 so MercadoPago retries transient failures.
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
 
