@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Jost, Ephesis, IBM_Plex_Mono, Lora } from "next/font/google";
 import "./globals.css";
 import { getUserOrNull } from "@/lib/auth";
 import { NavAuth } from "@/components/NavAuth";
@@ -7,6 +8,36 @@ import { WelcomeModal } from "@/components/WelcomeModal";
 import { PageTransition } from "@/components/PageTransition";
 
 export const dynamic = "force-dynamic";
+
+// Self-hosted + preloaded via next/font — replaces the render-blocking Google
+// Fonts @import that previously sat at the top of globals.css. Each exposes a
+// CSS variable consumed by tailwind.config.ts and the raw rules in globals.css.
+const jost = Jost({
+  subsets: ["latin"],
+  weight: ["200", "300", "400", "500"],
+  variable: "--font-jost",
+  display: "swap",
+});
+const lora = Lora({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  variable: "--font-lora",
+  display: "swap",
+});
+const ephesis = Ephesis({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-ephesis",
+  display: "swap",
+});
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
+const fontVariables = `${jost.variable} ${lora.variable} ${ephesis.variable} ${ibmPlexMono.variable}`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://cocogrammar.com";
 const SITE_NAME = "CocoGrammar";
@@ -177,7 +208,7 @@ const navLinks = [
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getUserOrNull();
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <head>
         <script
           type="application/ld+json"

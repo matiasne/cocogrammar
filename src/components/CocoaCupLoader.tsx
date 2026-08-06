@@ -238,7 +238,7 @@ export function CocoaCupLoader({
         {/* wordmark */}
         <div
           style={{
-            font: "200 44px/1 Jost,sans-serif",
+            font: "200 44px/1 var(--font-jost),sans-serif",
             letterSpacing: ".42em",
             color: "transparent",
             WebkitTextStroke: "1px rgba(245,236,226,.5)",
@@ -250,7 +250,7 @@ export function CocoaCupLoader({
         </div>
         <div
           className="font-script text-lime"
-          style={{ font: "400 32px/1 Ephesis,cursive", marginTop: 12, minHeight: "1em" }}
+          style={{ font: "400 32px/1 var(--font-ephesis),cursive", marginTop: 12, minHeight: "1em" }}
         >
           {caption}
         </div>

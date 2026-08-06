@@ -15,10 +15,11 @@ const config: Config = {
         ink: "#1c0d0a", // dark text on lime
       },
       fontFamily: {
-        sans: ["Jost", "system-ui", "sans-serif"],
-        reading: ["Lora", "Georgia", "serif"],
-        script: ["Ephesis", "cursive"],
-        mono: ["IBM Plex Mono", "monospace"],
+        // Wired to the next/font CSS variables set on <html> in layout.tsx.
+        sans: ["var(--font-jost)", "system-ui", "sans-serif"],
+        reading: ["var(--font-lora)", "Georgia", "serif"],
+        script: ["var(--font-ephesis)", "cursive"],
+        mono: ["var(--font-ibm-plex-mono)", "monospace"],
       },
     },
   },

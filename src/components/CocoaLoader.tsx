@@ -145,7 +145,7 @@ export function CocoaLoader() {
       <div
         className="mt-[52px]"
         style={{
-          font: "200 62px/1 Jost,sans-serif",
+          font: "200 62px/1 var(--font-jost),sans-serif",
           letterSpacing: ".42em",
           color: "transparent",
           WebkitTextStroke: "1px rgba(245,236,226,.5)",

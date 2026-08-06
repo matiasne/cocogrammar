@@ -259,7 +259,7 @@ export function CocoaSnapLoader({
                       position: "absolute",
                       left: ".4em",
                       top: ".34em",
-                      font: "400 .58em/1 'IBM Plex Mono',monospace",
+                      font: "400 .58em/1 var(--font-ibm-plex-mono),monospace",
                       letterSpacing: ".08em",
                       transition: "color .4s ease",
                       color: off
@@ -277,7 +277,7 @@ export function CocoaSnapLoader({
                       right: 0,
                       bottom: ".38em",
                       textAlign: "center",
-                      font: "300 .62em/1.2 Jost,sans-serif",
+                      font: "300 .62em/1.2 var(--font-jost),sans-serif",
                       transition: "opacity .65s ease",
                       opacity: off ? 1 : 0,
                       color: "rgba(255,246,232,.9)",
@@ -320,7 +320,7 @@ export function CocoaSnapLoader({
         {/* wordmark */}
         <div
           style={{
-            font: `200 ${compact ? 22 : 44}px/1 Jost,sans-serif`,
+            font: `200 ${compact ? 22 : 44}px/1 var(--font-jost),sans-serif`,
             letterSpacing: ".42em",
             color: "transparent",
             WebkitTextStroke: "1px rgba(245,236,226,.5)",
@@ -333,7 +333,7 @@ export function CocoaSnapLoader({
         <div
           className="font-script text-lime"
           style={{
-            font: `400 ${compact ? 20 : 32}px/1 Ephesis,cursive`,
+            font: `400 ${compact ? 20 : 32}px/1 var(--font-ephesis),cursive`,
             marginTop: compact ? 8 : 12,
             minHeight: "1em",
           }}
