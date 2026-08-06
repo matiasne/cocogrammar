@@ -317,7 +317,10 @@ export function CourseView() {
 
           return (
             <div className="">
-              <div>
+              {/* The sidebar is lg:fixed (out of flow), so reserve its footprint
+                  (left-6 + w-[17rem] + gap ≈ 19.5rem) as left padding on lg so the
+                  content column no longer sits under it. */}
+              <div className="lg:pl-[19.5rem]">
                 {/* Chapter progress — fixed to the top-left of the page */}
                 <aside className="mb-6 rounded-2xl bg-cocoa-panel p-6 lg:fixed lg:left-6 lg:top-24 lg:mb-0 lg:max-h-[calc(100vh-7rem)] lg:w-[17rem] lg:overflow-y-auto">
                   <button
