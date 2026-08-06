@@ -63,9 +63,15 @@ export function ChapterChallenges({
     setAnimKey((k) => k + 1);
   }
 
-  function computeStars(attempts: number): number {
-    if (attempts <= n) return 3;
-    if (attempts <= 2 * n) return 2;
+  // Score reflects progress so far: how many of the chapter's challenges have
+  // been answered correctly, out of the total. Unanswered/incorrect challenges
+  // pull the score down, so finishing early scores lower than finishing strong.
+  // The score API only accepts 1–3, so we floor at 1 star.
+  function computeStars(): number {
+    const correct = grades.filter((g) => g?.verdict === "correct").length;
+    const ratio = n > 0 ? correct / n : 0;
+    if (ratio >= 0.8) return 3;
+    if (ratio >= 0.5) return 2;
     return 1;
   }
 
@@ -110,7 +116,7 @@ export function ChapterChallenges({
   // Compute + persist the star score and jump to the done screen. Can be called
   // from any challenge via the "Finish chapter" button, or on the last one.
   async function finishNow() {
-    const score = computeStars(totalAttempts);
+    const score = computeStars();
     setFinalScore(score);
     setDone(true);
     try {

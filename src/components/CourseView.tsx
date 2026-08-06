@@ -9,6 +9,7 @@ import {
 } from "@/components/ChapterChallenges";
 import { Stars } from "@/components/Stars";
 import { LoginModal } from "@/components/LoginModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 type ChapterView = {
   id: string;
@@ -49,6 +50,8 @@ export function CourseView() {
   const [hasSubmissions, setHasSubmissions] = useState(false);
   // Deleting a chapter (from the complete view).
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Chapter awaiting delete confirmation in the modal (null when closed).
+  const [confirmChapter, setConfirmChapter] = useState<ChapterView | null>(null);
   // Lets the top "Finish chapter" button trigger the challenges' skip-to-score.
   const challengesRef = useRef<ChallengesHandle>(null);
 
@@ -101,14 +104,11 @@ export function CourseView() {
   // Delete a chapter: removes it and clears its category's writing data, so a
   // mastered weakness stops feeding future courses. Moves to the next chapter
   // (or Overview when none remain).
-  async function deleteChapter(chapter: ChapterView) {
-    if (
-      !confirm(
-        `Finish "${chapter.content.title}"? This removes the chapter and clears the "${chapter.category}" writing data it was built from.`,
-      )
-    ) {
-      return;
-    }
+  // Actually finish the chapter: hits the API, removes it from the course, and
+  // moves to the next chapter (or Overview when none remain). Called only after
+  // the user confirms in the modal.
+  async function performDelete(chapter: ChapterView) {
+    setConfirmChapter(null);
     setDeletingId(chapter.id);
     setError(null);
     try {
@@ -304,16 +304,7 @@ export function CourseView() {
           const nextChapter =
             chapterPos >= 0 ? course.chapters[chapterPos + 1] : undefined;
           const total = course.totalChapters;
-          const doneCount = total - course.chapters.length;
           const current = chapter.orderIndex + 1;
-          const remainingByIndex = new Set(
-            course.chapters.map((c) => c.orderIndex),
-          );
-          // Map each still-present chapter's absolute position to its title/id, so
-          // the sidebar can label and link them. Finished chapters are deleted.
-          const chapterByIndex = new Map(
-            course.chapters.map((c) => [c.orderIndex, c]),
-          );
 
           return (
             <div className="">
@@ -330,7 +321,8 @@ export function CourseView() {
                     Download PDF
                   </button>
                   <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-cream/50">
-                    {doneCount} of {total} squares tasted
+                    {course.chapters.length} square
+                    {course.chapters.length === 1 ? "" : "s"} left
                   </p>
                   <ol className="space-y-1">
                     <li>
@@ -349,40 +341,28 @@ export function CourseView() {
                         <span>Overview</span>
                       </button>
                     </li>
-                    {Array.from({ length: total }, (_, idx) => {
-                      const ch = chapterByIndex.get(idx);
-                      const isDone = !remainingByIndex.has(idx);
-                      const isCurrent = !showOverview && ch?.id === chapter.id;
-                      const label = ch?.content.title ?? `Chapter ${idx + 1}`;
+                    {/* Only the remaining chapters — finished ones are removed
+                        entirely (no struck-through slot) and the list renumbers. */}
+                    {course.chapters.map((ch, idx) => {
+                      const isCurrent = !showOverview && ch.id === chapter.id;
                       return (
-                        <li key={idx}>
+                        <li key={ch.id}>
                           <button
                             type="button"
-                            disabled={!ch}
-                            onClick={() => ch && setSelectedId(ch.id)}
+                            onClick={() => setSelectedId(ch.id)}
                             className={`flex w-full items-start justify-between gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-light ${
                               isCurrent
                                 ? "bg-lime/10 text-lime"
-                                : isDone
-                                  ? "cursor-default text-cream/35"
-                                  : "text-cream/55 hover:bg-cream/5 hover:text-cream"
+                                : "text-cream/55 hover:bg-cream/5 hover:text-cream"
                             }`}
                           >
                             <span className="flex items-start gap-2.5">
                               <span className="mt-0.5 w-4 shrink-0 text-center text-lime">
-                                {isDone ? "✓" : isCurrent ? "▸" : idx + 1}
+                                {isCurrent ? "▸" : idx + 1}
                               </span>
-                              <span
-                                className={
-                                  isDone
-                                    ? "line-through decoration-lime/40"
-                                    : ""
-                                }
-                              >
-                                {label}
-                              </span>
+                              <span>{ch.content.title}</span>
                             </span>
-                            {ch?.score != null && (
+                            {ch.score != null && (
                               <Stars
                                 score={ch.score}
                                 className="shrink-0 text-[11px]"
@@ -417,43 +397,30 @@ export function CourseView() {
                         Chapters
                       </p>
                       <ol className="flex flex-col gap-px overflow-hidden rounded-2xl bg-cream/10">
-                        {Array.from({ length: total }, (_, idx) => {
-                          const ch = chapterByIndex.get(idx);
-                          const isDone = !remainingByIndex.has(idx);
+                        {/* Only the remaining chapters — finished ones are gone. */}
+                        {course.chapters.map((ch, idx) => {
                           return (
-                            <li key={idx}>
+                            <li key={ch.id}>
                               <button
                                 type="button"
-                                disabled={!ch}
-                                onClick={() => ch && setSelectedId(ch.id)}
-                                className={`flex w-full items-center justify-between gap-3 bg-cocoa-panel px-5 py-4 text-left ${
-                                  ch
-                                    ? "hover:bg-cocoa-panel/70"
-                                    : "cursor-default"
-                                }`}
+                                onClick={() => setSelectedId(ch.id)}
+                                className="flex w-full items-center justify-between gap-3 bg-cocoa-panel px-5 py-4 text-left hover:bg-cocoa-panel/70"
                               >
                                 <span className="flex items-center gap-3">
                                   <span className="w-5 text-center text-lime">
-                                    {isDone ? "✓" : idx + 1}
+                                    {idx + 1}
                                   </span>
-                                  <span
-                                    className={`font-reading text-lg font-normal ${
-                                      isDone
-                                        ? "text-cream/35 line-through decoration-lime/40"
-                                        : "text-cream"
-                                    }`}
-                                  >
-                                    {ch?.content.title ?? `Chapter ${idx + 1}`}
+                                  <span className="font-reading text-lg font-normal text-cream">
+                                    {ch.content.title}
                                   </span>
                                 </span>
-                                {ch &&
-                                  (ch.score != null ? (
-                                    <Stars score={ch.score} />
-                                  ) : (
-                                    <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-lime">
-                                      Open →
-                                    </span>
-                                  ))}
+                                {ch.score != null ? (
+                                  <Stars score={ch.score} />
+                                ) : (
+                                  <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-lime">
+                                    Open →
+                                  </span>
+                                )}
                               </button>
                             </li>
                           );
@@ -516,7 +483,7 @@ export function CourseView() {
                         onDeleteChapter={
                           deletingId === chapter.id
                             ? undefined
-                            : () => deleteChapter(chapter)
+                            : () => setConfirmChapter(chapter)
                         }
                       />
                     </section>
@@ -558,6 +525,21 @@ export function CourseView() {
       onClose={() => setAuthRequired(false)}
       title="log in to build your course"
       message="Create a free account so we can press your own writing into a personalized course."
+    />
+
+    <ConfirmModal
+      open={confirmChapter !== null}
+      onClose={() => setConfirmChapter(null)}
+      onConfirm={() => confirmChapter && performDelete(confirmChapter)}
+      busy={deletingId !== null}
+      title="finish this chapter?"
+      message={
+        confirmChapter
+          ? `This removes "${confirmChapter.content.title}" and clears the "${confirmChapter.category}" writing data it was built from.`
+          : ""
+      }
+      confirmLabel="Finish chapter"
+      cancelLabel="Keep it"
     />
     </>
   );
