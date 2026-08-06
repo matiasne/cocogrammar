@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CocoaCupLoader } from "@/components/CocoaCupLoader";
-import {
-  ChapterChallenges,
-  type ChallengesHandle,
-} from "@/components/ChapterChallenges";
+import { ChapterChallenges } from "@/components/ChapterChallenges";
 import { Stars } from "@/components/Stars";
 import { LoginModal } from "@/components/LoginModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { MOCK_COURSE, isMockId } from "@/lib/mockCourse";
+
+// In local dev, auto-load a mock course so the full flow is visible without
+// generating a real one. Inlined at build time; always false in production.
+const IS_DEV = process.env.NODE_ENV === "development";
 
 type ChapterView = {
   id: string;
@@ -52,8 +54,6 @@ export function CourseView() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // Chapter awaiting delete confirmation in the modal (null when closed).
   const [confirmChapter, setConfirmChapter] = useState<ChapterView | null>(null);
-  // Lets the top "Finish chapter" button trigger the challenges' skip-to-score.
-  const challengesRef = useRef<ChallengesHandle>(null);
 
   // Load an existing course + whether there are submissions to build from.
   useEffect(() => {
@@ -62,6 +62,10 @@ export function CourseView() {
       if (res.ok) {
         const data = await res.json();
         setCourse(data.course);
+        setSelectedId("overview");
+      } else if (IS_DEV) {
+        // Dev only: no real course, so drop in the mock to exercise the flow.
+        setCourse(MOCK_COURSE);
         setSelectedId("overview");
       }
     })();
@@ -101,14 +105,35 @@ export function CourseView() {
     }
   }
 
-  // Delete a chapter: removes it and clears its category's writing data, so a
-  // mastered weakness stops feeding future courses. Moves to the next chapter
-  // (or Overview when none remain).
-  // Actually finish the chapter: hits the API, removes it from the course, and
-  // moves to the next chapter (or Overview when none remain). Called only after
-  // the user confirms in the modal.
+  // Removes the finished chapter from the course in memory and moves to the next
+  // one (or Overview when none remain).
+  function removeChapterLocally(chapter: ChapterView) {
+    setCourse((prev) => {
+      if (!prev) return prev;
+      const idx = prev.chapters.findIndex((c) => c.id === chapter.id);
+      const remaining = prev.chapters.filter((c) => c.id !== chapter.id);
+      if (remaining.length === 0) {
+        setSelectedId("overview");
+        return null;
+      }
+      const next = remaining[Math.min(idx, remaining.length - 1)];
+      setSelectedId(next.id);
+      return { ...prev, chapters: remaining };
+    });
+  }
+
+  // Actually finish the chapter: hits the API to delete it and clear its
+  // category's writing data, then removes it from the course. Called only after
+  // the user confirms in the modal. Mock (dev) chapters skip the API — there's
+  // no real DB row — and are removed locally.
   async function performDelete(chapter: ChapterView) {
     setConfirmChapter(null);
+
+    if (isMockId(chapter.id)) {
+      removeChapterLocally(chapter);
+      return;
+    }
+
     setDeletingId(chapter.id);
     setError(null);
     try {
@@ -120,18 +145,7 @@ export function CourseView() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to finish chapter");
 
-      setCourse((prev) => {
-        if (!prev) return prev;
-        const idx = prev.chapters.findIndex((c) => c.id === chapter.id);
-        const remaining = prev.chapters.filter((c) => c.id !== chapter.id);
-        if (remaining.length === 0) {
-          setSelectedId("overview");
-          return null;
-        }
-        const next = remaining[Math.min(idx, remaining.length - 1)];
-        setSelectedId(next.id);
-        return { ...prev, chapters: remaining };
-      });
+      removeChapterLocally(chapter);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -296,13 +310,6 @@ export function CourseView() {
           );
           const showOverview = selectedId === "overview" || !selectedChapter;
           const chapter = selectedChapter ?? course.chapters[0];
-          // The next remaining chapter after the open one (for "Continue to
-          // next chapter"); undefined if this is the last remaining chapter.
-          const chapterPos = course.chapters.findIndex(
-            (c) => c.id === chapter.id,
-          );
-          const nextChapter =
-            chapterPos >= 0 ? course.chapters[chapterPos + 1] : undefined;
           const total = course.totalChapters;
           const current = chapter.orderIndex + 1;
 
@@ -436,7 +443,7 @@ export function CourseView() {
                         Square {current} of {total}
                       </p>
                       <button
-                        onClick={() => challengesRef.current?.finishNow()}
+                        onClick={() => setConfirmChapter(chapter)}
                         className="rounded-3xl border border-cream/40 px-5 py-2 text-[12px] font-light uppercase tracking-[0.12em] text-cream hover:border-lime/50 hover:text-lime"
                       >
                         Finish chapter
@@ -469,17 +476,11 @@ export function CourseView() {
 
                       <ChapterChallenges
                         key={chapter.id}
-                        handleRef={challengesRef}
                         chapterId={chapter.id}
                         category={chapter.category}
                         exercises={chapter.content.exercises}
                         initialScore={chapter.score}
                         onScored={(score) => handleScored(chapter.id, score)}
-                        onContinueNext={
-                          nextChapter
-                            ? () => setSelectedId(nextChapter.id)
-                            : undefined
-                        }
                         onDeleteChapter={
                           deletingId === chapter.id
                             ? undefined

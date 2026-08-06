@@ -1,15 +1,12 @@
 "use client";
 
-import { useImperativeHandle, useState, type Ref } from "react";
+import { useState } from "react";
 import type { Grade } from "@/lib/schemas";
 import { Stars } from "@/components/Stars";
 import { CocoaSnapLoader } from "@/components/CocoaSnapLoader";
+import { isMockId } from "@/lib/mockCourse";
 
 type Exercise = { prompt: string; type: string; answer: string };
-
-// Imperative handle so the parent can trigger "skip to score" from a button it
-// renders above the card (alongside "Square X of Y").
-export type ChallengesHandle = { finishNow: () => void };
 
 export function ChapterChallenges({
   chapterId,
@@ -17,20 +14,15 @@ export function ChapterChallenges({
   exercises,
   initialScore,
   onScored,
-  onContinueNext,
   onDeleteChapter,
-  handleRef,
 }: {
   chapterId: string;
   category: string;
   exercises: Exercise[];
   initialScore: number | null;
   onScored: (score: number) => void;
-  // Provided by the parent only when there IS a next pending chapter.
-  onContinueNext?: () => void;
   // Delete the whole chapter (from the complete view).
   onDeleteChapter?: () => void;
-  handleRef?: Ref<ChallengesHandle>;
 }) {
   const n = exercises.length;
 
@@ -119,14 +111,17 @@ export function ChapterChallenges({
     const score = computeStars();
     setFinalScore(score);
     setDone(true);
-    try {
-      await fetch("/api/chapter/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapterId, score }),
-      });
-    } catch {
-      // Non-fatal — the score still shows this session.
+    // Mock (dev) chapters have no real DB row — skip the persist call.
+    if (!isMockId(chapterId)) {
+      try {
+        await fetch("/api/chapter/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chapterId, score }),
+        });
+      } catch {
+        // Non-fatal — the score still shows this session.
+      }
     }
     onScored(score);
   }
@@ -141,9 +136,6 @@ export function ChapterChallenges({
     setError(null);
     setAnimKey((k) => k + 1);
   }
-
-  // Expose "skip to score" so the parent's top button can trigger it.
-  useImperativeHandle(handleRef, () => ({ finishNow }));
 
   // Already completed (loaded from DB) — show the result with a redo option.
   if (!started && finalScore !== null) {
@@ -165,17 +157,9 @@ export function ChapterChallenges({
           {onDeleteChapter && (
             <button
               onClick={onDeleteChapter}
-              className="rounded-3xl border border-cream/28 px-6 py-2 text-[12px] font-light uppercase tracking-[0.12em] text-cream hover:border-lime/50 hover:text-lime"
-            >
-              Finish chapter
-            </button>
-          )}
-          {onContinueNext && (
-            <button
-              onClick={onContinueNext}
               className="rounded-3xl bg-lime px-6 py-2.5 text-sm font-normal text-ink hover:bg-lime-bright"
             >
-              Continue to next chapter →
+              Finish chapter →
             </button>
           )}
         </div>
@@ -205,17 +189,9 @@ export function ChapterChallenges({
           {onDeleteChapter && (
             <button
               onClick={onDeleteChapter}
-              className="rounded-3xl border border-cream/28 px-6 py-2 text-[12px] font-light uppercase tracking-[0.12em] text-cream hover:border-lime/50 hover:text-lime"
-            >
-              Finish chapter
-            </button>
-          )}
-          {onContinueNext && (
-            <button
-              onClick={onContinueNext}
               className="rounded-3xl bg-lime px-6 py-2.5 text-sm font-normal text-ink hover:bg-lime-bright"
             >
-              Continue to next chapter →
+              Finish chapter →
             </button>
           )}
         </div>
