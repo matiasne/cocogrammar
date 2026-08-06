@@ -17,10 +17,15 @@ export function AuthForm({
   mode = "login",
   embedded = false,
   onSuccess,
+  redirectTo,
 }: {
   mode?: "login" | "signup";
   embedded?: boolean;
   onSuccess?: () => void;
+  // Where to land the user after a successful login. The /login and /signup
+  // pages pass "/" (the Write surface); the modal omits it so an in-place login
+  // returns the user to wherever they were.
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [currentMode, setCurrentMode] = useState<"login" | "signup">(mode);
@@ -33,18 +38,26 @@ export function AuthForm({
   const isSignup = currentMode === "signup";
 
   async function withGoogle() {
+    if (busy) return;
+    setBusy(true);
     setError(null);
     const supabase = createClient();
-    // Return to the current page so a modal login lands the user back where they
-    // were, with their input intact.
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-      window.location.pathname + window.location.search,
-    )}`;
+    // Where the auth/callback route lands the user once it exchanges the code:
+    // an explicit `redirectTo` (the Write page from /login and /signup) when
+    // given, otherwise back to the current page so a modal login returns the
+    // user to where they were, with their input intact.
+    const next = redirectTo ?? window.location.pathname + window.location.search;
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: { redirectTo: callbackUrl },
     });
-    if (error) setError(error.message);
+    // On success the browser navigates away to Google, so we keep the loader up.
+    // Only a failure to *start* the flow lands here — release it and show why.
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+    }
   }
 
   async function withEmail(e: React.FormEvent) {
@@ -80,7 +93,7 @@ export function AuthForm({
         onSuccess();
         router.refresh();
       } else {
-        router.push("/");
+        router.push(redirectTo ?? "/");
         router.refresh();
       }
     } catch (err) {
