@@ -70,7 +70,7 @@ export function MercadoPagoBrick({ amount }: { amount: number }) {
     (async () => {
       try {
         await loadSdk();
-        const mp = new window.MercadoPago!(publicKey, { locale: "es-AR" });
+        const mp = new window.MercadoPago!(publicKey, { locale: "en-US" });
         const bricks = mp.bricks();
         controller = await bricks.create("cardPayment", CONTAINER_ID, {
           initialization: { amount },
