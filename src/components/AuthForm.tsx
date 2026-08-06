@@ -58,15 +58,24 @@ export function AuthForm({
       if (isSignup) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // If email confirmation is on, there's no session yet.
+        // If email confirmation is on, there's no session yet — stop here and
+        // release the loader so the user can read the confirmation notice.
         if (!data.session) {
           setNotice("Check your email to confirm your account, then log in.");
+          setBusy(false);
           return;
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
+      // Success. Keep the loader up through the navigation/refresh: `router.push`
+      // and `router.refresh` resolve as soon as they're *called*, not when the
+      // destination has actually rendered. If we cleared `busy` here the spinner
+      // would vanish while the main page is still loading. Instead we leave it
+      // spinning — the modal's onClose unmounts this form, and the page navigation
+      // replaces it, so the overlay stays visible right up until the user is home
+      // and logged in.
       if (onSuccess) {
         onSuccess();
         router.refresh();
@@ -75,14 +84,34 @@ export function AuthForm({
         router.refresh();
       }
     } catch (err) {
+      // Only on failure do we release the loader and surface the error.
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setBusy(false);
     }
   }
 
   return (
     <div className={embedded ? "" : "mx-auto mt-16 max-w-sm"}>
+      {/* Full-screen overlay loader. Stays up from the moment the user submits
+          until either the main page has rendered (success) or an error is shown
+          (which clears `busy`). Covers the whole viewport so a modal login can't
+          be dismissed and the form can't be re-submitted mid-flight. */}
+      {busy && (
+        <div
+          className="overlay-fade fixed inset-0 z-[60] flex flex-col items-center justify-center gap-5 bg-cocoa/85 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className="block h-10 w-10 rounded-full border-2 border-cream/20 border-t-lime"
+            style={{ animation: "cdSpin 0.8s linear infinite" }}
+          />
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-cream/60">
+            {isSignup ? "creating your account" : "logging you in"}
+          </p>
+        </div>
+      )}
+
       {!embedded && (
         <>
           <p className="font-script text-4xl text-lime">
@@ -96,7 +125,8 @@ export function AuthForm({
 
       <button
         onClick={withGoogle}
-        className={`flex w-full items-center justify-center gap-3 rounded-2xl border border-cream/25 bg-cream/[0.04] px-6 py-3 text-[15px] font-light text-cream hover:border-lime/50 hover:text-lime ${
+        disabled={busy}
+        className={`flex w-full items-center justify-center gap-3 rounded-2xl border border-cream/25 bg-cream/[0.04] px-6 py-3 text-[15px] font-light text-cream hover:border-lime/50 hover:text-lime disabled:cursor-not-allowed disabled:opacity-40 ${
           embedded ? "" : "mt-8"
         }`}
       >
@@ -134,9 +164,21 @@ export function AuthForm({
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-2xl bg-lime px-6 py-3 text-[15px] font-normal text-ink hover:bg-lime-bright disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lime px-6 py-3 text-[15px] font-normal text-ink hover:bg-lime-bright disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {busy ? "…" : isSignup ? "Sign up" : "Log in"}
+          {busy && (
+            <span
+              className="block h-4 w-4 rounded-full border-2 border-ink/30 border-t-ink"
+              style={{ animation: "cdSpin 0.8s linear infinite" }}
+            />
+          )}
+          {busy
+            ? isSignup
+              ? "Signing up…"
+              : "Logging in…"
+            : isSignup
+              ? "Sign up"
+              : "Log in"}
         </button>
       </form>
 
