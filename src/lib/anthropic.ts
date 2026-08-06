@@ -85,6 +85,7 @@ export async function gradeAnswer(
   modelAnswer: string,
   userAnswer: string,
 ): Promise<Grade> {
+  console.log(`[grade] gradeAnswer → anthropic / ${FAST_MODEL}`);
   const res = await anthropic.messages.parse({
     model: FAST_MODEL,
     max_tokens: 512,
@@ -128,6 +129,7 @@ include a handful of concrete practice exercises with model answers. Order modul
 impact. Keep it motivating and achievable.`;
 
 export async function generateCourse(weaknessSummary: string): Promise<Course> {
+  console.log(`[course] generateCourse → anthropic / ${MODEL}`);
   const res = await anthropic.messages.parse({
     model: MODEL,
     max_tokens: 8000,

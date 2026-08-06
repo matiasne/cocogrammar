@@ -47,11 +47,18 @@ export async function requireUser(): Promise<AppUser> {
   return row;
 }
 
-/** Non-throwing variant for Server Components that render for logged-out users. */
+/**
+ * Non-throwing variant for Server Components that render for logged-out users.
+ * Only a genuinely absent session yields null; any OTHER failure (e.g. a DB
+ * error) is logged and rethrown, so a real problem can't silently masquerade as
+ * "logged out" and show the guest nav to an authenticated user.
+ */
 export async function getUserOrNull(): Promise<AppUser | null> {
   try {
     return await requireUser();
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof UnauthorizedError) return null;
+    console.error("getUserOrNull failed:", err);
+    throw err;
   }
 }

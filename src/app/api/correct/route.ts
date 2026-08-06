@@ -1,4 +1,5 @@
 import { sql, eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { db } from "@/db";
 import { submissions, distillations, users } from "@/db/schema";
@@ -9,12 +10,16 @@ import {
   isBadRequestError,
 } from "@/lib/grammar";
 import { embed, distillationSignature } from "@/lib/embeddings";
-import { requireUser, unauthorized, UnauthorizedError } from "@/lib/auth";
+import { getUserOrNull } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-// Free tier: 10 sentence checks. Subscribers are unlimited.
+// Free tier (logged in): 10 sentence checks. Subscribers are unlimited.
 const FREE_SENTENCE_LIMIT = 10;
+// Guests (no account): a single free correction to try the product. Tracked by a
+// cookie and NOT persisted (there's no account to attach it to).
+const GUEST_FREE_CORRECTIONS = 1;
+const GUEST_COOKIE = "cg_corr";
 
 const BodySchema = z.object({
   text: z.string().min(1, "Text is required"),
@@ -34,16 +39,26 @@ export async function POST(req: Request) {
   }
 
   // Auth + quota BEFORE the stream: the client checks `!res.ok` before reading
-  // the body, so a 402 must be a plain response, not a stream event.
-  let user;
-  try {
-    user = await requireUser();
-  } catch (err) {
-    if (err instanceof UnauthorizedError) return unauthorized();
-    throw err;
-  }
+  // the body, so 401/402 must be a plain response, not a stream event.
+  const user = await getUserOrNull();
 
-  if (!user.isSubscribed && user.sentencesUsed >= FREE_SENTENCE_LIMIT) {
+  // Guest path: allow a single free correction (cookie-tracked, not persisted).
+  // Once used, require a login.
+  let markGuestUsed = false;
+  if (!user) {
+    const cookieStore = await cookies();
+    const used = Number(cookieStore.get(GUEST_COOKIE)?.value ?? "0");
+    if (used >= GUEST_FREE_CORRECTIONS) {
+      return Response.json(
+        {
+          error: "Log in to keep correcting — your free one is used up.",
+          authRequired: true,
+        },
+        { status: 401 },
+      );
+    }
+    markGuestUsed = true;
+  } else if (!user.isSubscribed && user.sentencesUsed >= FREE_SENTENCE_LIMIT) {
     return Response.json(
       {
         error: "You've used all 10 free sentence checks. Subscribe for unlimited.",
@@ -67,6 +82,13 @@ export async function POST(req: Request) {
 
         // 2. Heavier analysis next.
         const analysis = await distill(input.text);
+
+        // Guests: return the analysis but don't persist (no account) or bump the
+        // user quota — the cookie set on the response caps them at one.
+        if (!user) {
+          send({ type: "analysis", analysis, submissionId: null });
+          return;
+        }
 
         // 3. Persist everything (submission + distillation + embedding).
         const [submission] = await db
@@ -110,10 +132,18 @@ export async function POST(req: Request) {
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-    },
+  const headers = new Headers({
+    "Content-Type": "application/x-ndjson; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
   });
+
+  // Mark the guest's single free correction as used (1-year cookie).
+  if (markGuestUsed) {
+    headers.append(
+      "Set-Cookie",
+      `${GUEST_COOKIE}=${GUEST_FREE_CORRECTIONS}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`,
+    );
+  }
+
+  return new Response(stream, { headers });
 }

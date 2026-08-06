@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getHistory, countHistory } from "@/db/queries";
 import { getUserOrNull } from "@/lib/auth";
 import { FeedbackPanel } from "@/components/FeedbackPanel";
@@ -14,7 +13,30 @@ export default async function HistoryPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const user = await getUserOrNull();
-  if (!user) redirect("/login");
+
+  // Public page: guests see an invitation to log in rather than someone's log.
+  if (!user) {
+    return (
+      <div className="mx-auto mt-16 max-w-md text-center">
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-cream/50">
+          Every slip, filed away
+        </p>
+        <h1 className="mt-3 font-sans text-5xl font-extralight leading-tight text-cream md:text-6xl">
+          Your log
+        </h1>
+        <p className="mt-4 font-reading text-lg font-normal leading-relaxed text-cream/85">
+          Log in to see every sentence you&rsquo;ve tasted and the lessons pressed
+          from them.
+        </p>
+        <Link
+          href="/login"
+          className="mt-6 inline-block rounded-3xl bg-lime px-6 py-2.5 text-sm font-normal text-ink hover:bg-lime-bright hover:text-ink"
+        >
+          Log in →
+        </Link>
+      </div>
+    );
+  }
 
   const { page: pageParam } = await searchParams;
 

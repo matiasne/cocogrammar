@@ -21,17 +21,12 @@ export function NavAuth({
 
   if (!email) {
     return (
-      <div className="flex items-center gap-4">
-        <Link href="/login" className="text-[15px] font-light text-cream/70 hover:text-cream">
-          Log in
-        </Link>
-        <Link
-          href="/signup"
-          className="rounded-3xl bg-lime px-6 py-2.5 text-[15px] font-normal text-ink hover:bg-lime-bright hover:text-ink"
-        >
-          Sign up
-        </Link>
-      </div>
+      <Link
+        href="/login"
+        className="rounded-3xl bg-lime px-6 py-2.5 text-[15px] font-normal text-ink hover:bg-lime-bright hover:text-ink"
+      >
+        Log in
+      </Link>
     );
   }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Analysis } from "@/lib/schemas";
 import { FeedbackPanel } from "@/components/FeedbackPanel";
 import { CocoaSnapLoader } from "@/components/CocoaSnapLoader";
+import { LoginModal } from "@/components/LoginModal";
 
 const DEBOUNCE_MS = 6000;
 
@@ -26,6 +27,8 @@ export function WriterPane({
   const [error, setError] = useState<string | null>(null);
   // Set when the free sentence quota is exhausted (402 paywall).
   const [paywalled, setPaywalled] = useState(false);
+  // Set when a guest tries to correct while logged out (401 from the API).
+  const [authRequired, setAuthRequired] = useState(false);
   const [correctedText, setCorrectedText] = useState<string | null>(null);
   // Holds the corrected text as soon as it arrives; it's promoted to
   // `correctedText` (and shown) only once the loader animation completes to 100%.
@@ -117,6 +120,7 @@ export function WriterPane({
     setLoading(true);
     setError(null);
     setPaywalled(false);
+    setAuthRequired(false);
     setCorrectedText(null);
     setPendingCorrected(null);
     setAnalysis(null);
@@ -132,6 +136,10 @@ export function WriterPane({
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          setAuthRequired(true);
+          return;
+        }
         if (res.status === 402 && data.paywall) {
           setPaywalled(true);
           return;
@@ -269,6 +277,7 @@ export function WriterPane({
   }, []);
 
   return (
+    <>
     <div className="mx-auto max-w-3xl space-y-10">
       {/* Invisible writing surface with a floating caret. Clicking a processed
           sentence re-opens it for editing (clears the results). */}
@@ -389,11 +398,11 @@ export function WriterPane({
           </div>
         )}
 
-        {error && !loading && !paywalled && (
+        {error && !loading && !paywalled && !authRequired && (
           <p className="text-sm font-light text-red-300">{error}</p>
         )}
 
-        {!loading && !hasResult && !error && !paywalled && (
+        {!loading && !hasResult && !error && !paywalled && !authRequired && (
           <p className="text-sm font-light text-cream/40">
             Pause after a sentence and your correction appears here.
           </p>
@@ -440,5 +449,13 @@ export function WriterPane({
         </section>
       )}
     </div>
+
+    <LoginModal
+      open={authRequired}
+      onClose={() => setAuthRequired(false)}
+      title="log in to get your correction"
+      message="You've used your free correction. Create a free account (10 sentence checks + 4 courses) to keep going."
+    />
+    </>
   );
 }

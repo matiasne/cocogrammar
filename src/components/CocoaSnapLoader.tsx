@@ -65,6 +65,14 @@ export function CocoaSnapLoader({
   const [snapped, setSnapped] = useState(0);
   const [kick, setKick] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Keep the latest onDone without making the finish effect depend on its
+  // identity — an inline `onDone={() => …}` changes every render, and if the
+  // effect re-ran it would clear its own 900ms hand-off timer before it fired,
+  // leaving the loader stuck at 100% forever.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  // Ensures the hand-off runs exactly once.
+  const doneFiredRef = useRef(false);
 
   useEffect(() => {
     const n = TOPICS.length;
@@ -92,21 +100,25 @@ export function CocoaSnapLoader({
     return () => timers.current.forEach(clearTimeout);
   }, []);
 
-  // When the real work finishes: snap to 100%, hold briefly, then hand off.
+  // When the real work finishes: snap to 100%, hold briefly, then hand off ONCE.
+  // Depends only on `finish` (not onDone), and guards the hand-off with a ref, so
+  // parent re-renders can't restart or cancel the 900ms hold.
   useEffect(() => {
-    if (!finish) return;
+    if (!finish || doneFiredRef.current) return;
     timers.current.forEach(clearTimeout);
     timers.current = [];
     setSnapped(TOPICS.length);
     setKick(true);
     const kt = setTimeout(() => setKick(false), 220);
-    const t = setTimeout(() => onDone?.(), 900);
-    return () => {
-      clearTimeout(kt);
-      clearTimeout(t);
-    };
+    const t = setTimeout(() => {
+      doneFiredRef.current = true;
+      onDoneRef.current?.();
+    }, 900);
+    timers.current.push(kt, t);
+    // No cleanup that clears `t`: the hold must complete even across re-renders.
+    // The stepping effect's unmount cleanup clears all timers, including these.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finish, onDone]);
+  }, [finish]);
 
   const n = TOPICS.length;
   const pct = Math.round((snapped / n) * 100);

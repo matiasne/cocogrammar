@@ -8,6 +8,7 @@ import {
   type ChallengesHandle,
 } from "@/components/ChapterChallenges";
 import { Stars } from "@/components/Stars";
+import { LoginModal } from "@/components/LoginModal";
 
 type ChapterView = {
   id: string;
@@ -37,6 +38,8 @@ export function CourseView() {
   const [error, setError] = useState<string | null>(null);
   // Set when the free course-generation quota is exhausted (402 paywall).
   const [paywalled, setPaywalled] = useState(false);
+  // Set when a guest tries to build a course while logged out (401).
+  const [authRequired, setAuthRequired] = useState(false);
   // Which chapter is open. Free navigation — the user can jump to any chapter
   // without finishing the previous one.
   // Which item is open: "overview" (the intro/resume + chapter links) or a
@@ -72,9 +75,14 @@ export function CourseView() {
     setLoading(true);
     setError(null);
     setPaywalled(false);
+    setAuthRequired(false);
     try {
       const res = await fetch("/api/course", { method: "POST" });
       const data = await res.json();
+      if (res.status === 401) {
+        setAuthRequired(true);
+        return;
+      }
       if (res.status === 402 && data.paywall) {
         setPaywalled(true);
         return;
@@ -227,6 +235,7 @@ export function CourseView() {
   }
 
   return (
+    <>
     <div className={`w-full`}>
       {/* Intro header — only before the user has their own course */}
       {!course && (
@@ -271,7 +280,7 @@ export function CourseView() {
         </div>
       )}
 
-      {error && !paywalled && (
+      {error && !paywalled && !authRequired && (
         <p className="rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-light text-red-200">
           {error}
         </p>
@@ -540,5 +549,13 @@ export function CourseView() {
         </div>
       )}
     </div>
+
+    <LoginModal
+      open={authRequired}
+      onClose={() => setAuthRequired(false)}
+      title="log in to build your course"
+      message="Create a free account so we can press your own writing into a personalized course."
+    />
+    </>
   );
 }

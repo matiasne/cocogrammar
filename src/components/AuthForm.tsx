@@ -6,22 +6,43 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 // Shared login/signup surface: "Continue with Google" + an email/password form.
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+// Used both as the full /login and /signup pages and inside LoginModal.
+//
+// - `embedded`: drop page margins and toggle login/signup INSIDE the component
+//   (via a button) instead of linking to the separate pages — so a modal user
+//   never navigates away and loses their in-progress input.
+// - `onSuccess`: called after a successful email/password login. The modal uses
+//   it to close + refresh in place; the pages fall back to navigating home.
+export function AuthForm({
+  mode = "login",
+  embedded = false,
+  onSuccess,
+}: {
+  mode?: "login" | "signup";
+  embedded?: boolean;
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
+  const [currentMode, setCurrentMode] = useState<"login" | "signup">(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const isSignup = mode === "signup";
+  const isSignup = currentMode === "signup";
 
   async function withGoogle() {
     setError(null);
     const supabase = createClient();
+    // Return to the current page so a modal login lands the user back where they
+    // were, with their input intact.
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+      window.location.pathname + window.location.search,
+    )}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo },
     });
     if (error) setError(error.message);
   }
@@ -46,8 +67,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      router.push("/");
-      router.refresh();
+      if (onSuccess) {
+        onSuccess();
+        router.refresh();
+      } else {
+        router.push("/");
+        router.refresh();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -56,17 +82,23 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <div className="mx-auto mt-16 max-w-sm">
-      <p className="font-script text-4xl text-lime">
-        {isSignup ? "join sweetly" : "welcome back"}
-      </p>
-      <h1 className="mt-1 text-2xl font-light text-cream">
-        {isSignup ? "Create your account" : "Log in to Cocoa"}
-      </h1>
+    <div className={embedded ? "" : "mx-auto mt-16 max-w-sm"}>
+      {!embedded && (
+        <>
+          <p className="font-script text-4xl text-lime">
+            {isSignup ? "join sweetly" : "welcome back"}
+          </p>
+          <h1 className="mt-1 text-2xl font-light text-cream">
+            {isSignup ? "Create your account" : "Log in to Cocoa"}
+          </h1>
+        </>
+      )}
 
       <button
         onClick={withGoogle}
-        className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl border border-cream/25 bg-cream/[0.04] px-6 py-3 text-[15px] font-light text-cream hover:border-lime/50 hover:text-lime"
+        className={`flex w-full items-center justify-center gap-3 rounded-2xl border border-cream/25 bg-cream/[0.04] px-6 py-3 text-[15px] font-light text-cream hover:border-lime/50 hover:text-lime ${
+          embedded ? "" : "mt-8"
+        }`}
       >
         Continue with Google
       </button>
@@ -111,21 +143,25 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       {error && <p className="mt-4 text-sm font-light text-red-300">{error}</p>}
       {notice && <p className="mt-4 text-sm font-light text-lime">{notice}</p>}
 
-      <p className="mt-6 text-sm font-light text-cream/60">
-        {isSignup ? (
-          <>
-            Already have an account?{" "}
-            <Link href="/login" className="text-lime">
-              Log in
-            </Link>
-          </>
+      <p className="mt-6 text-center text-sm font-light text-cream/60">
+        {isSignup ? "Already have an account? " : "New here? "}
+        {embedded ? (
+          // Toggle in place — never leaves the modal.
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentMode(isSignup ? "login" : "signup");
+              setError(null);
+              setNotice(null);
+            }}
+            className="text-lime hover:text-lime-bright"
+          >
+            {isSignup ? "Log in" : "Create an account"}
+          </button>
         ) : (
-          <>
-            New here?{" "}
-            <Link href="/signup" className="text-lime">
-              Create an account
-            </Link>
-          </>
+          <Link href={isSignup ? "/login" : "/signup"} className="text-lime">
+            {isSignup ? "Log in" : "Create an account"}
+          </Link>
         )}
       </p>
     </div>
