@@ -24,35 +24,49 @@ type ClusterRow = { grammarNotes: string; mistakes: unknown };
  * Aggregate a user's distillations into a compact weakness summary for the
  * course agent. Uses pgvector similarity to surface the most representative
  * recurring-error cluster, plus a category-frequency breakdown.
+ *
+ * Submissions the learner thumbs-DOWNED (distillation.feedback === "down") are
+ * kept but split into a LOW PRIORITY section, so the agent still sees them but
+ * ranks their categories below the weaknesses the learner didn't push back on.
  */
 function buildWeaknessSummary(
   distills: Awaited<ReturnType<typeof getAllDistillations>>,
   cluster: ClusterRow[],
 ): string {
-  // Category frequency across all mistakes.
-  const categoryCounts = new Map<string, number>();
-  const exampleByCategory = new Map<string, Mistake>();
   const levels: string[] = [];
+  // Category frequency, tracked separately for normal vs thumbs-down submissions.
+  const highCounts = new Map<string, number>();
+  const lowCounts = new Map<string, number>();
+  const exampleByCategory = new Map<string, Mistake>();
 
   for (const d of distills) {
     levels.push(d.levelEstimate);
+    // A thumbs-down means the learner disagreed this was a real weakness worth
+    // focusing on — count it toward the low-priority bucket instead.
+    const counts = d.feedback === "down" ? lowCounts : highCounts;
     for (const m of d.mistakes) {
-      categoryCounts.set(m.category, (categoryCounts.get(m.category) ?? 0) + 1);
+      counts.set(m.category, (counts.get(m.category) ?? 0) + 1);
       if (!exampleByCategory.has(m.category)) exampleByCategory.set(m.category, m);
     }
   }
 
-  const topCategories = [...categoryCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([category, count]) => {
-      const ex = exampleByCategory.get(category);
-      const example = ex
-        ? ` e.g. "${ex.excerpt}" → "${ex.correction}" (${ex.explanation})`
-        : "";
-      return `- ${category}: ${count} occurrence(s).${example}`;
-    })
-    .join("\n");
+  const formatCategories = (counts: Map<string, number>) =>
+    [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([category, count]) => {
+        const ex = exampleByCategory.get(category);
+        const example = ex
+          ? ` e.g. "${ex.excerpt}" → "${ex.correction}" (${ex.explanation})`
+          : "";
+        return `- ${category}: ${count} occurrence(s).${example}`;
+      })
+      .join("\n");
 
+  const topCategories = formatCategories(highCounts);
+  const lowPriorityCategories = formatCategories(lowCounts);
+
+  // Only surface the cluster from submissions the learner didn't thumbs-down,
+  // so the "representative recurring issue" isn't one they dismissed.
   const clusterText = cluster
     .map((c) => {
       const ms = (c.mistakes as Mistake[] | null) ?? [];
@@ -61,17 +75,22 @@ function buildWeaknessSummary(
     })
     .join("\n");
 
+  const lowPrioritySection = lowPriorityCategories
+    ? `\n\nLOW PRIORITY — the learner reacted "not helpful" (thumbs-down) to these corrections. Only address them if they overlap the high-priority weaknesses; otherwise give them little or no coverage:
+${lowPriorityCategories}`
+    : "";
+
   return `Learner weakness summary (${distills.length} past submissions).
 
 Estimated levels over time (oldest→newest): ${[...levels].reverse().join(", ")}
 
-Most frequent mistake categories:
+HIGH PRIORITY — most frequent mistake categories (focus the course here):
 ${topCategories || "- (none recorded)"}
 
 A cluster of the learner's most similar recurring writing issues:
-${clusterText || "- (no cluster available)"}
+${clusterText || "- (no cluster available)"}${lowPrioritySection}
 
-Design a personalized course targeting these weaknesses.`;
+Design a personalized course targeting the HIGH PRIORITY weaknesses first.`;
 }
 
 export async function POST() {

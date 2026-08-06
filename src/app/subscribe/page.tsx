@@ -1,9 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserOrNull } from "@/lib/auth";
 import { usdToArs } from "@/lib/fx";
 import { MercadoPagoBrick } from "@/components/MercadoPagoBrick";
 
 export const dynamic = "force-dynamic";
+
+// Auth-gated (guests are redirected to /login) — keep it out of the index.
+export const metadata: Metadata = {
+  title: "Cocoa Unlimited — unlimited corrections & courses",
+  description:
+    "Go unlimited for $5/month: unlimited AI grammar corrections and as many personalized courses as you want. Cancel anytime.",
+  robots: { index: false, follow: true },
+};
 
 export default async function SubscribePage() {
   const user = await getUserOrNull();

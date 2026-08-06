@@ -8,9 +8,164 @@ import { PageTransition } from "@/components/PageTransition";
 
 export const dynamic = "force-dynamic";
 
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://cocogrammar.com";
+const SITE_NAME = "CocoGrammar";
+const TAGLINE = "AI English grammar coach that turns your mistakes into a personalized course";
+const DESCRIPTION =
+  "CocoGrammar is a free AI English grammar checker and coach. Write a sentence, get an instant correction, and watch your own mistakes get pressed into a personalized grammar course built around your habits. Learn English writing by fixing the errors you actually make.";
+
 export const metadata: Metadata = {
-  title: "CocoGrammar — learn sweetly",
-  description: "Every slip you make becomes a lesson. Grammar coaching from your own writing.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "CocoGrammar — AI grammar coach that learns from your mistakes",
+    template: "%s · CocoGrammar",
+  },
+  description: DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "AI grammar checker",
+    "English grammar coach",
+    "learn English writing",
+    "personalized grammar course",
+    "grammar correction",
+    "English writing practice",
+    "fix grammar mistakes",
+    "ESL writing",
+    "grammar feedback",
+    "AI English tutor",
+  ],
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: "education",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: "CocoGrammar — AI grammar coach that learns from your mistakes",
+    description: DESCRIPTION,
+    locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "CocoGrammar — learn sweetly. Every slip becomes a lesson.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CocoGrammar — AI grammar coach that learns from your mistakes",
+    description: TAGLINE + ". Every slip you make becomes a lesson.",
+    images: ["/opengraph-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  icons: {
+    icon: "/icon",
+    apple: "/icon",
+  },
+};
+
+// Structured data (JSON-LD) — helps both traditional SEO rich results and GEO
+// (answer engines like ChatGPT, Perplexity, Google AI Overviews) understand
+// what CocoGrammar is, how it's priced, and what it costs nothing to try.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: DESCRIPTION,
+      logo: `${SITE_URL}/icon`,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: TAGLINE,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      inLanguage: "en",
+    },
+    {
+      "@type": ["SoftwareApplication", "EducationalApplication"],
+      "@id": `${SITE_URL}/#app`,
+      name: SITE_NAME,
+      applicationCategory: "EducationApplication",
+      operatingSystem: "Web",
+      url: SITE_URL,
+      description: DESCRIPTION,
+      featureList: [
+        "Instant AI grammar correction",
+        "Personalized grammar courses generated from your own mistakes",
+        "Chapter-based exercises and challenges",
+        "Progress history of every correction",
+      ],
+      offers: [
+        {
+          "@type": "Offer",
+          name: "Free plan",
+          price: "0",
+          priceCurrency: "USD",
+          description: "10 sentence checks and 4 personalized course generations, free.",
+        },
+        {
+          "@type": "Offer",
+          name: "Cocoa Unlimited",
+          price: "5",
+          priceCurrency: "USD",
+          description:
+            "Unlimited grammar corrections and unlimited personalized courses. Cancel anytime.",
+        },
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What is CocoGrammar?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "CocoGrammar is an AI English grammar coach. You write a sentence, it corrects it instantly, and it turns the mistakes you actually make into a personalized grammar course tailored to your own habits.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Is CocoGrammar free?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. The free plan includes 10 sentence corrections and 4 personalized course generations. Cocoa Unlimited is $5/month for unlimited corrections and courses, and you can cancel anytime.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How is CocoGrammar different from a normal grammar checker?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "A normal grammar checker just fixes a sentence and moves on. CocoGrammar remembers the mistakes you repeat and presses them into a personalized course, so you stop tripping over the same rock twice.",
+          },
+        },
+      ],
+    },
+  ],
 };
 
 const navLinks = [
@@ -23,6 +178,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await getUserOrNull();
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body>
         <WelcomeModal />
         <header>

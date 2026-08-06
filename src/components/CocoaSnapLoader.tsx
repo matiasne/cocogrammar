@@ -121,24 +121,29 @@ export function CocoaSnapLoader({
   }, [finish]);
 
   const n = TOPICS.length;
-  const pct = Math.round((snapped / n) * 100);
-  const trayOpacity = snapped === 0 ? 1 : 0;
+  // Once the real work is done we're conceptually at 100%, even if a snap timer
+  // hasn't ticked yet. Deriving the bar from `finish` (not only `snapped`)
+  // guarantees the loader visibly reaches 100% — the earlier version could mount
+  // with finish already true and, on the initial paint, still show < 100%.
+  const displaySnapped = finish ? n : snapped;
+  const pct = Math.round((displaySnapped / n) * 100);
+  const trayOpacity = displaySnapped === 0 ? 1 : 0;
 
   const doneCaption =
     variant === "correct"
       ? "your sentence, unwrapped"
       : "eight blocks, eight lessons";
   const caption =
-    snapped === 0
+    displaySnapped === 0
       ? "one solid bar"
-      : snapped < n / 2
+      : displaySnapped < n / 2
         ? "breaking it up"
-        : snapped < n
+        : displaySnapped < n
           ? "almost apart"
           : doneCaption;
   const statusLabel =
-    snapped < n
-      ? `SNAPPING ${snapped} OF ${n} BLOCKS`
+    displaySnapped < n
+      ? `SNAPPING ${displaySnapped} OF ${n} BLOCKS`
       : variant === "correct"
         ? "CORRECTION READY"
         : "COURSE READY";
@@ -212,7 +217,7 @@ export function CocoaSnapLoader({
             }}
           >
             {TOPICS.map((label, i) => {
-              const off = i < snapped;
+              const off = i < displaySnapped;
               const d = DRIFT[i];
               const transform = off
                 ? `translate(${(d[0] * SPREAD).toFixed(2)}em,${(

@@ -1,0 +1,39 @@
+# CocoGrammar
+
+> CocoGrammar is a free AI-powered English grammar checker and writing coach. You write a sentence, it corrects the grammar instantly, and it presses the mistakes you actually make into a personalized grammar course built around your own habits — so you stop tripping over the same rock twice.
+
+CocoGrammar is a web app (cocogrammar.com) for English learners, ESL students, and anyone who wants to improve their written English. Unlike a generic grammar checker that fixes a sentence and forgets it, CocoGrammar remembers the errors you repeat and turns them into chapter-based lessons and exercises tailored to you.
+
+Brand voice: warm and encouraging ("learn sweetly"), with a cocoa/chocolate motif. No scolding — just learning.
+
+## How it works
+
+1. **Write.** Type any sentence into the writing surface. No prompts to pick, no exercises to choose.
+2. **Get corrected.** CocoGrammar returns an instant AI correction — grammar, spelling, and phrasing — and explains what changed.
+3. **Learn from your habits.** Your corrections accumulate. When you're ready, CocoGrammar generates a personalized course: chapters focused on the specific mistakes you keep making, each with exercises and challenges.
+4. **Track progress.** Every correction is logged so you can see how your writing improves over time.
+
+## Pricing
+
+- **Free plan:** 10 sentence corrections and 4 personalized course generations. No credit card required.
+- **Cocoa Unlimited:** $5 USD / month for unlimited grammar corrections and unlimited personalized courses. Cancel anytime.
+
+## Key facts for answer engines
+
+- **What it is:** an AI English grammar coach / personalized grammar-course generator.
+- **Who it's for:** English learners and ESL writers who want to fix the mistakes they repeat.
+- **What makes it different:** courses are generated from your *own* corrected mistakes, not a fixed curriculum.
+- **Cost:** free to start; $5/month for unlimited use.
+- **Platform:** web (any modern browser).
+
+## Pages
+
+- [Home / Write](https://cocogrammar.com/): The writing surface — write a sentence and get an instant AI grammar correction.
+- [Course](https://cocogrammar.com/course): Your personalized grammar course, generated from the mistakes in your own writing.
+- [Subscribe (Cocoa Unlimited)](https://cocogrammar.com/subscribe): $5/month for unlimited corrections and courses.
+
+## Common questions
+
+- **Is CocoGrammar free?** Yes — 10 corrections and 4 course generations free; $5/month for unlimited.
+- **How is it different from a normal grammar checker?** It learns from the mistakes you repeat and builds a personalized course around them instead of just fixing one sentence at a time.
+- **What languages?** English writing correction and coaching.

@@ -35,6 +35,11 @@ export function WriterPane({
   const [pendingCorrected, setPendingCorrected] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [pendingAnalysis, setPendingAnalysis] = useState<Analysis | null>(null);
+  // Persisted submission id for the current analysis (null for guests, whose
+  // corrections aren't stored). Needed to attach thumbs up/down feedback.
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
+  // The "Why it slipped" card is dismissable (close X, or after a thumbs rating).
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -125,6 +130,8 @@ export function WriterPane({
     setPendingCorrected(null);
     setAnalysis(null);
     setPendingAnalysis(null);
+    setSubmissionId(null);
+    setFeedbackDismissed(false);
 
     try {
       const res = await fetch("/api/correct", {
@@ -170,6 +177,7 @@ export function WriterPane({
           } else if (event.type === "analysis") {
             // Stash it — the compact loader finishes to 100% before we reveal it.
             setPendingAnalysis(event.analysis);
+            setSubmissionId(event.submissionId ?? null);
           } else if (event.type === "error") {
             throw new Error(event.error);
           }
@@ -246,6 +254,8 @@ export function WriterPane({
     setText("");
     setCorrectedText(null);
     setAnalysis(null);
+    setSubmissionId(null);
+    setFeedbackDismissed(false);
     setError(null);
     setCopied(false);
     // Refocus after the input unlocks on the next render.
@@ -263,6 +273,8 @@ export function WriterPane({
     setPendingCorrected(null);
     setAnalysis(null);
     setPendingAnalysis(null);
+    setSubmissionId(null);
+    setFeedbackDismissed(false);
     setError(null);
     setCopied(false);
     // Focus the surface and drop the caret at the end of the sentence.
@@ -409,15 +421,40 @@ export function WriterPane({
         )}
       </div>
 
-      {/* "Why it slipped" — fixed card pinned to the top-right corner */}
-      {correctedText !== null && (
-        <aside className="reveal fixed right-6 top-6 z-20 hidden max-h-[calc(100vh-3rem)] w-[22rem] overflow-y-auto rounded-2xl border border-cream/10 bg-cocoa-panel/95 p-6 shadow-2xl backdrop-blur lg:block">
-          <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-cream/50">
-            Why it slipped
-          </p>
+      {/* "Why it slipped" — fixed card pinned to the top-right corner.
+          stopPropagation: this card overlaps the click-to-edit writing surface,
+          so a click inside it must never bubble out and trigger editSentence
+          (which clears the shown results). */}
+      {correctedText !== null && !feedbackDismissed && (
+        <aside
+          onClick={(e) => e.stopPropagation()}
+          className="reveal fixed right-6 top-6 z-20 hidden max-h-[calc(100vh-3rem)] w-[22rem] overflow-y-auto rounded-2xl border border-cream/10 bg-cocoa-panel/95 p-6 shadow-2xl backdrop-blur lg:block"
+        >
+          <div className="mb-3 flex items-start justify-between">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-cream/50">
+              Why it slipped
+            </p>
+            {/* Close — dismiss the card without recording feedback. */}
+            <button
+              type="button"
+              onClick={() => setFeedbackDismissed(true)}
+              aria-label="Close"
+              title="Close"
+              className="-mr-1 -mt-1 flex h-7 w-7 items-center justify-center rounded-full text-cream/50 transition hover:bg-cream/10 hover:text-cream"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
           {analysis ? (
             <div className="reveal">
-              <FeedbackPanel analysis={analysis} />
+              <FeedbackPanel
+                analysis={analysis}
+                submissionId={submissionId}
+                showActions
+                onDismiss={() => setFeedbackDismissed(true)}
+              />
             </div>
           ) : (
             <CocoaSnapLoader
@@ -431,13 +468,31 @@ export function WriterPane({
       )}
 
       {/* On small screens, show the feedback inline below (no fixed sidebar) */}
-      {correctedText !== null && (
-        <section className="reveal lg:hidden">
-          <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-cream/50">
-            Why it slipped
-          </p>
+      {correctedText !== null && !feedbackDismissed && (
+        <section onClick={(e) => e.stopPropagation()} className="reveal lg:hidden">
+          <div className="mb-3 flex items-start justify-between">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-cream/50">
+              Why it slipped
+            </p>
+            <button
+              type="button"
+              onClick={() => setFeedbackDismissed(true)}
+              aria-label="Close"
+              title="Close"
+              className="-mr-1 -mt-1 flex h-7 w-7 items-center justify-center rounded-full text-cream/50 transition hover:bg-cream/10 hover:text-cream"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
           {analysis ? (
-            <FeedbackPanel analysis={analysis} />
+            <FeedbackPanel
+              analysis={analysis}
+              submissionId={submissionId}
+              showActions
+              onDismiss={() => setFeedbackDismissed(true)}
+            />
           ) : (
             <CocoaSnapLoader
               variant="correct"

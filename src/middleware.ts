@@ -11,8 +11,20 @@ const PUBLIC_PREFIXES = [
   "/api/billing/webhook",
 ];
 
-// Exact public page paths (in addition to the prefixes above).
-const PUBLIC_EXACT = new Set(["/", "/course", "/history"]);
+// Exact public page paths (in addition to the prefixes above). Includes the
+// SEO/metadata routes so crawlers (Google + answer engines) get the real file
+// instead of a /login redirect — those bots never carry a session.
+const PUBLIC_EXACT = new Set([
+  "/",
+  "/course",
+  "/history",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/llms.txt",
+  "/manifest.webmanifest",
+  "/icon",
+  "/opengraph-image",
+]);
 
 export async function middleware(request: NextRequest) {
   // Cookies Supabase wants to (re)set this request — e.g. a refreshed session.

@@ -54,6 +54,10 @@ export const distillations = pgTable("distillations", {
   grammarNotes: text("grammar_notes").notNull(),
   rawAnalysis: jsonb("raw_analysis").notNull(),
   embedding: vector("embedding", { dimensions: EMBEDDING_DIM }).notNull(),
+  // Learner's reaction to this correction's "Why it slipped" analysis, from the
+  // thumbs up/down buttons. 'down' deprioritizes this submission's weaknesses
+  // when the course agent builds a course; null means no reaction yet.
+  feedback: text("feedback").$type<"up" | "down">(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("distillations_embedding_idx").using(

@@ -1,0 +1,1 @@
+ALTER TABLE "distillations" ADD COLUMN "feedback" text;

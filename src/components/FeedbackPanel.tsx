@@ -1,6 +1,127 @@
+"use client";
+
+import { useState } from "react";
 import type { Analysis } from "@/lib/schemas";
 
-export function FeedbackPanel({ analysis }: { analysis: Analysis }) {
+// Bottom action row for the "Why it slipped" card: thumbs up / down (which also
+// dismiss the card) plus a share button. `submissionId` is null for guests
+// (their corrections aren't persisted), so rating is disabled in that case.
+function FeedbackActions({
+  analysis,
+  submissionId,
+  onDismiss,
+}: {
+  analysis: Analysis;
+  submissionId: string | null;
+  onDismiss?: () => void;
+}) {
+  const [sending, setSending] = useState<"up" | "down" | null>(null);
+  const [shared, setShared] = useState(false);
+
+  async function rate(feedback: "up" | "down") {
+    if (sending) return;
+    // Guests have nothing to attach feedback to — just close the card.
+    if (submissionId) {
+      setSending(feedback);
+      try {
+        await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ submissionId, feedback }),
+        });
+      } catch {
+        // Best-effort: a failed feedback save shouldn't block dismissing the card.
+      }
+    }
+    onDismiss?.();
+  }
+
+  async function share() {
+    const slips = analysis.mistakes
+      .map((m) => `• ${m.excerpt} → ${m.correction}`)
+      .join("\n");
+    const text = `My CocoGrammar check (Level ${analysis.levelEstimate})\n${slips}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Why it slipped", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShared(true);
+        setTimeout(() => setShared(false), 1800);
+      }
+    } catch {
+      // User cancelled the share sheet, or clipboard denied — nothing to do.
+    }
+  }
+
+  const iconBtn =
+    "flex h-9 w-9 items-center justify-center rounded-full border border-cream/15 text-cream/60 transition hover:border-lime/50 hover:text-lime disabled:cursor-not-allowed disabled:opacity-40";
+
+  return (
+    <div className="flex items-center gap-2 border-t border-cream/10 pt-4">
+      <button
+        type="button"
+        onClick={() => rate("up")}
+        disabled={sending !== null}
+        aria-label="Helpful"
+        title="Helpful"
+        className={iconBtn}
+      >
+        {/* thumbs up */}
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M7 10v11" />
+          <path d="M7 10l4-7a2 2 0 0 1 2.7 2.5L12 10h5.5a2 2 0 0 1 2 2.4l-1.3 6.5a2 2 0 0 1-2 1.6H7" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => rate("down")}
+        disabled={sending !== null}
+        aria-label="Not helpful"
+        title="Not helpful — deprioritize this in my course"
+        className={iconBtn}
+      >
+        {/* thumbs down */}
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M17 14V3" />
+          <path d="M17 14l-4 7a2 2 0 0 1-2.7-2.5L12 14H6.5a2 2 0 0 1-2-2.4l1.3-6.5a2 2 0 0 1 2-1.6H17" />
+        </svg>
+      </button>
+
+      <span className="flex-1" />
+
+      <button
+        type="button"
+        onClick={share}
+        aria-label={shared ? "Copied" : "Share"}
+        title={shared ? "Copied to clipboard" : "Share"}
+        className={iconBtn}
+      >
+        {/* share */}
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+export function FeedbackPanel({
+  analysis,
+  submissionId = null,
+  onDismiss,
+  showActions = false,
+}: {
+  analysis: Analysis;
+  // Present only in the live "Why it slipped" card; omitted in read-only
+  // contexts (e.g. history) where the action row shouldn't show.
+  submissionId?: string | null;
+  onDismiss?: () => void;
+  showActions?: boolean;
+}) {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
@@ -84,6 +205,14 @@ export function FeedbackPanel({ analysis }: { analysis: Analysis }) {
           </ul>
         )}
       </section>
+
+      {showActions && (
+        <FeedbackActions
+          analysis={analysis}
+          submissionId={submissionId}
+          onDismiss={onDismiss}
+        />
+      )}
     </div>
   );
 }
